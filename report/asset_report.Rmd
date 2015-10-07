@@ -1,0 +1,48 @@
+# Prime Asset Report 
+
+```{r}
+
+library(dplyr)
+library(ggplot2)
+
+```
+
+
+```{r}
+
+assets_created_by_year <- documents_df %>%
+  count(year_created) %>%
+  ggplot(aes(year_created, n)) + 
+    geom_bar(stat = "identity", fill = "#0899CC") +
+    geom_text(aes(label = n), vjust = -0.2) +
+    xlab("Year created") +
+    ylab("Number of assets") +
+    ggtitle(("Assets by year")) +
+    theme_classic()
+
+assets_created_by_method <- documents_df %>%
+  count(methodology) %>%
+  ggplot(aes(reorder(methodology, n), n)) +
+    geom_bar(stat = "identity", fill = "#0899CC") +
+    geom_text(aes(label = n), hjust = -0.2) +
+    xlab("Methodology") +
+    ylab("Number of assets") +
+    ggtitle("Assets by methodology") +
+    coord_flip() +
+    theme_bw()
+
+assets_created_by_year_method <- documents_df %>%
+  count(year_created, methodology) %>%
+  ggplot(aes(year_created, n)) +
+    geom_bar(stat = "identity", fill = "#0899CC") +
+    geom_text(aes(label = n), vjust = -0.2) +
+    xlab("Year created") +
+    ylab("Number of assets") +
+    ggtitle("Assets by methodology and year") +
+    facet_grid(. ~ methodology) +
+    theme_bw() +
+    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
+
+
+```
+
