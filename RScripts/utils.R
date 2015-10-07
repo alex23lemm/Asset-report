@@ -1,11 +1,28 @@
+download_data <- function(folder_names, redmine_key, alfresco_key) {
+  root_folder_df <- get_folder_IDs(folder_names, redmine_key,
+                                   alfresco_key)
+  documents_df <- data.frame()
+  
+  for (i in 1:nrow(root_folder_df)) {
+    methodology_docs <- get_document_list(root_folder_df$id[i],
+                                          root_folder_df$name[i],
+                                          redmine_key,
+                                          alfresco_key)
+    documents_df %<>% rbind(methodology_docs)
+  }
+  return(documents_df)
+}
 
-get_folder_IDs <- function(folder_names) {
+
+get_folder_IDs <- function(folder_names, redmine_key, alfresco_key) {
   # Downloads metadata information (ID, name) of folders residing in a LabCase
   # project
   #
   # Args:
   #   folder_names: character vector with folder name acronyms which are matched
   #                 against folder names
+  #   redmine_key: Redmine API key
+  #   alfresco_key: Alfresco API key
   #        
   # Returns:
   #   Data frame containing folder ID and folder name acronym
@@ -34,7 +51,8 @@ get_folder_IDs <- function(folder_names) {
 
 
 
-get_document_list <- function(folder_id, methodology) {
+get_document_list <- function(folder_id, methodology, redmine_key, 
+                              alfresco_key) {
   # Downloads information about documents residing in a certain folder of a 
   # LabCase project
   #
@@ -42,7 +60,9 @@ get_document_list <- function(folder_id, methodology) {
   #   folder_id: id of the folder whose content should be extracted as a list
   #   methdodoly: character string specifying the methodology the folder 
   #               belongs to
-  #        
+  #   redmine_key: Redmine API key
+  #   alfresco_key: Alfresco API key
+  #
   # Returns:
   #   Data frame containing information about every document residing in the 
   #   folder
@@ -71,8 +91,6 @@ get_document_list <- function(folder_id, methodology) {
   description <- rep("", length(name))
   description[index] <- description_text
   
- # methodology <- rep(methodology, length(name))
-  
   document_df <- data.frame(methodology, name, id, type, description, last_modified_raw, 
                      stringsAsFactors = FALSE) %>%
     mutate(
@@ -82,14 +100,15 @@ get_document_list <- function(folder_id, methodology) {
     )
   
   # Get document details for each record
-  document_details_df <- get_document_details(document_df$id)
+  document_details_df <- get_document_details(document_df$id, redmine_key,
+                                              alfresco_key)
   document_df %<>% left_join(document_details_df, by = "name")
   
   return(document_df)
 }
 
 
-get_document_details <- function(document_ids) {
+get_document_details <- function(document_ids, redmine_key, alfresco_key) {
   # Downloads detailed information about documents. 
   #
   # Function serves as a helper function of get_document_list() because date
@@ -99,6 +118,9 @@ get_document_details <- function(document_ids) {
   # Args:
   #   document_ids: IDs of documents whose detailed informaiton should be 
   #                 downloaded
+  #   redmine_key: Redmine API key
+  #   alfresco_key: Alfresco API key
+  #
   #        
   # Returns:
   #   Data frame containing additional information about every document
