@@ -1,47 +1,102 @@
 # Prime Asset Report 
 
-```{r}
+```{r echo=FALSE, message=FALSE, error=FALSE}
 
 library(dplyr)
 library(ggplot2)
+library(grid)
+
+
+documents_df <- read.csv("../data/asset_list_processed.csv")
+date_of_extraction <- read.csv("../data/date_of_extraction.csv")
+
 
 ```
 
 
-```{r}
+Data as of  **`r as.character(date_of_extraction[1,])`**
+
+## General Information 
+
+The `Prime Asset Report` provides information about released Prime assets from a LabCase point of view. 
+We only examine assets which are stored in the [main Prime project](https://labcase.softwareag.com/projects/prime/alfresco/documents) in LabCase in one of the methodology-specific folders. Those assets are available to our user base via the GCS Portal search. 
+
+All information below was gathered by extracting file information using the [LabCase Assets API](https://labcase.softwareag.com/projects/labcase/wiki/LabCase_Asset_API). Currently, the API does not support tags. Therefore, only available file metadata information like `date created`, `date modified`, `folder stored` was processed. In contrast, tag information like, for instance, `asset type` or `scope of usage` could not be taken into account. 
+
+
+
+* **Total** number of **assets**: **`r nrow(documents_df)`**
+
+## Creation history
+
+All charts in this section deal with the original date the assets were created and stored in the main Prime project.
+
+```{r echo=FALSE, warning=FALSE, fig.width=12}
 
 assets_created_by_year <- documents_df %>%
   count(year_created) %>%
+  {max_val <<- max(.$n) 
+  . }  %>%
   ggplot(aes(year_created, n)) + 
     geom_bar(stat = "identity", fill = "#0899CC") +
     geom_text(aes(label = n), vjust = -0.2) +
-    xlab("Year created") +
+    xlab("Year") +
     ylab("Number of assets") +
-    ggtitle(("Assets by year")) +
-    theme_classic()
+    ggtitle(("Assets created by year")) +
+    ylim(0, max_val * 1.02) +
+    theme(plot.title = element_text(size = rel(1.2)),
+        axis.title = element_text(size = 12),
+        axis.text = element_text(size = 10)) +
+    theme_bw()
+
 
 assets_created_by_method <- documents_df %>%
-  count(methodology) %>%
-  ggplot(aes(reorder(methodology, n), n)) +
+  count(method_acronym) %>%
+  {max_val <<- max(.$n) 
+  . } %>%
+  ggplot(aes(reorder(method_acronym, n), n)) +
     geom_bar(stat = "identity", fill = "#0899CC") +
     geom_text(aes(label = n), hjust = -0.2) +
     xlab("Methodology") +
     ylab("Number of assets") +
-    ggtitle("Assets by methodology") +
+    ggtitle("Assets created by methodology") +
+    ylim(0, max_val * 1.06) +
     coord_flip() +
+    theme(plot.title = element_text(size = rel(1.2)),
+        axis.title = element_text(size = 12),
+        axis.text = element_text(size = 10)) +
     theme_bw()
 
+
+# Layout plots side-by-side on a 2-row-2-column grid
+grid.newpage()
+# Push viewport to graphic device
+pushViewport(viewport(layout = grid.layout(2, 2)))
+print(assets_created_by_year, vp = viewport(layout.pos.row = 1:2, layout.pos.col = 1))
+print(assets_created_by_method, vp = viewport(layout.pos.row = 1:2, layout.pos.col = 2))
+
+
+```
+
+
+```{r echo=FALSE, warning=FALSE, fig.width=10, fig.height=10}
+
 assets_created_by_year_method <- documents_df %>%
-  count(year_created, methodology) %>%
+  count(year_created, method_acronym) %>%
+  {max_val <<- max(.$n) 
+  .} %>%
   ggplot(aes(year_created, n)) +
     geom_bar(stat = "identity", fill = "#0899CC") +
     geom_text(aes(label = n), vjust = -0.2) +
-    xlab("Year created") +
+    xlab("Year") +
     ylab("Number of assets") +
-    ggtitle("Assets by methodology and year") +
-    facet_grid(. ~ methodology) +
+    ggtitle("Assets created by methodology and year") +
+    ylim(0, max_val * 1.09) +
+    facet_wrap(~ method_acronym, ncol = 3) +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
+
+assets_created_by_year_method
 
 
 ```
