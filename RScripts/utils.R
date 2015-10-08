@@ -157,6 +157,30 @@ get_document_details <- function(document_ids, redmine_key, alfresco_key) {
 }
 
 
+map_name_to_acronym <- function(names, mapping) {
+  # Maps the complete methodology names to an abbreviated version of the name
+  #
+  # Args:
+  #   names: character vector containing the complete methodology names
+  #   mapping: character vector containing the mapping rules. Each entry has
+  #            the following form "full name, acronym"
+  #         
+  # Returns:
+  #   Vector with abbreviated methodology names
+  
+  full_names <- str_extract(mapping, '^.*,') %>%
+    str_sub(1, str_length(.) - 1) %>%
+    str_trim(side = "both")
+  
+  acronyms <- str_extract(mapping, ",.*") %>%
+    str_sub(2, str_length(.)) %>%
+    str_trim(side = "both")
+  
+  return(mapvalues(names, full_names, acronyms, warn_missing = FALSE))
+  
+}
+
+
 
 
 
