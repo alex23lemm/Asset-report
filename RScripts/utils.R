@@ -54,7 +54,7 @@ get_folder_IDs <- function(folder_names, redmine_key, alfresco_key) {
 get_document_list <- function(folder_id, methodology, redmine_key, 
                               alfresco_key) {
   # Downloads information about documents residing in a certain folder of a 
-  # LabCase project
+  # LabCase project. Also all existing subfolders are harvested.
   #
   # Args:
   #   folder_id: id of the folder whose content should be extracted as a list
@@ -74,6 +74,11 @@ get_document_list <- function(folder_id, methodology, redmine_key,
                          ),
                          content_type_xml()
   ) %>% content(as = "text") %>% read_xml
+  
+  # Check if folder is totally empty
+  if (xml_find_all(doc, ".//children") %>%  xml_text == "") {
+    return(data.frame())
+  }
   
   name <- xml_find_all(doc, ".//children/asset/name") %>% xml_text
   id <- xml_find_all(doc, ".//children/asset/id") %>% xml_text
@@ -104,6 +109,14 @@ get_document_list <- function(folder_id, methodology, redmine_key,
                                               alfresco_key)
   document_df %<>% left_join(document_details_df, by = "name")
   
+  # Recursive part: Extract files from all sub folders
+  ids <- document_df$id[document_df$type == "folder"]
+  for (i in ids) {
+    document_df <- rbind(document_df, 
+                         get_document_list(i, methodology, redmine_key, 
+                                           alfresco_key))
+  }
+
   return(document_df)
 }
 
@@ -179,10 +192,4 @@ map_name_to_acronym <- function(names, mapping) {
   return(mapvalues(names, full_names, acronyms, warn_missing = FALSE))
   
 }
-
-
-
-
-
-
 
