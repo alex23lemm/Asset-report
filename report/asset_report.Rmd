@@ -3,6 +3,7 @@
 ```{r echo=FALSE, message=FALSE, error=FALSE}
 
 library(dplyr)
+library(tidyr)
 library(ggplot2)
 library(grid)
 
@@ -35,14 +36,16 @@ All charts in this section deal with the original date the assets were created a
 
 assets_created_by_year <- documents_df %>%
   count(year_created) %>%
-  {max_val <<- max(.$n) 
+  replace_na(list(year_created = "Unknown")) %>%
+  {max_val <<- max(.$n)
+  sum_val <<- sum(.$n)
   . }  %>%
   ggplot(aes(year_created, n)) + 
     geom_bar(stat = "identity", fill = "#0899CC") +
     geom_text(aes(label = n), vjust = -0.2) +
     xlab("Year") +
     ylab("Number of assets") +
-    ggtitle(("Assets created by year")) +
+    ggtitle(paste0("Assets created by year (", sum_val, " overall)")) +
     ylim(0, max_val * 1.02) +
     theme(plot.title = element_text(size = rel(1.2)),
         axis.title = element_text(size = 12),
@@ -52,14 +55,15 @@ assets_created_by_year <- documents_df %>%
 
 assets_created_by_method <- documents_df %>%
   count(method_acronym) %>%
-  {max_val <<- max(.$n) 
+  {max_val <<- max(.$n)
+  sum_val <<- sum(.$n)
   . } %>%
   ggplot(aes(reorder(method_acronym, n), n)) +
     geom_bar(stat = "identity", fill = "#0899CC") +
     geom_text(aes(label = n), hjust = -0.2) +
     xlab("Methodology") +
     ylab("Number of assets") +
-    ggtitle("Assets created by methodology") +
+    ggtitle(paste0("Assets created by methodology (", sum_val, " overall)")) +
     ylim(0, max_val * 1.06) +
     coord_flip() +
     theme(plot.title = element_text(size = rel(1.2)),
@@ -83,6 +87,11 @@ print(assets_created_by_method, vp = viewport(layout.pos.row = 1:2, layout.pos.c
 
 assets_created_by_year_method <- documents_df %>%
   count(year_created, method_acronym) %>%
+  group_by(method_acronym) %>%
+  mutate(
+    method_plus_numb = paste0(method_acronym, " (", sum(n), " overall)")
+  ) %>% 
+  replace_na(list(year_created = "Unknown")) %>%
   {max_val <<- max(.$n) 
   .} %>%
   ggplot(aes(year_created, n)) +
@@ -92,7 +101,7 @@ assets_created_by_year_method <- documents_df %>%
     ylab("Number of assets") +
     ggtitle("Assets created by methodology and year") +
     ylim(0, max_val * 1.09) +
-    facet_wrap(~ method_acronym, ncol = 3) +
+    facet_wrap(~ method_plus_numb, ncol = 3) +
     theme_bw() +
     theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
 
