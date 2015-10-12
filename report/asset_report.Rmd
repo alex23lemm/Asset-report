@@ -1,14 +1,20 @@
 # Prime Asset Report 
 
-```{r echo=FALSE, message=FALSE, error=FALSE}
+```{r echo=FALSE, message=FALSE, warning=FALSE}
 
 library(dplyr)
 library(tidyr)
 library(ggplot2)
 library(grid)
+library(lubridate)
 
 
-documents_df <- read.csv("../data/asset_list_processed.csv")
+documents_df <- read.csv("../data/asset_list_processed.csv", 
+                         stringsAsFactors = FALSE) %>%
+  mutate(
+    date_created = ymd_hms(date_created),
+    date_last_modified = ymd_hms(date_last_modified)
+  )
 date_of_extraction <- read.csv("../data/date_of_extraction.csv")
 
 
@@ -42,10 +48,11 @@ assets_by_filetype <- documents_df %>%
     ggtitle(paste0("Assets by file type (", sum_val, " overall)")) +
     ylim(0, max_val * 1.06) +
     coord_flip() +
-    theme(plot.title = element_text(size = rel(1.2)),
+    theme_bw() +
+    theme(plot.title = element_text(size = rel(1.3)),
         axis.title = element_text(size = 12),
-        axis.text = element_text(size = 10)) +
-    theme_bw()
+        axis.text = element_text(size = 10)) 
+    
 
 assets_by_filetype
     
@@ -73,10 +80,11 @@ assets_created_by_year <- documents_df %>%
     ylab("Number of assets") +
     ggtitle(paste0("Assets created by year (", sum_val, " overall)")) +
     ylim(0, max_val * 1.02) +
-    theme(plot.title = element_text(size = rel(1.2)),
+    theme_bw() +
+    theme(plot.title = element_text(size = rel(1.3)),
         axis.title = element_text(size = 12),
-        axis.text = element_text(size = 10)) +
-    theme_bw()
+        axis.text = element_text(size = 10)) 
+    
 
 
 assets_created_by_method <- documents_df %>%
@@ -92,10 +100,11 @@ assets_created_by_method <- documents_df %>%
     ggtitle(paste0("Assets created by methodology (", sum_val, " overall)")) +
     ylim(0, max_val * 1.06) +
     coord_flip() +
-    theme(plot.title = element_text(size = rel(1.2)),
+    theme_bw() +
+    theme(plot.title = element_text(size = rel(1.3)),
         axis.title = element_text(size = 12),
-        axis.text = element_text(size = 10)) +
-    theme_bw()
+        axis.text = element_text(size = 10)) 
+    
 
 
 # Layout plots side-by-side on a 2-row-2-column grid
@@ -126,13 +135,72 @@ assets_created_by_year_method <- documents_df %>%
     xlab("Year") +
     ylab("Number of assets") +
     ggtitle("Assets created by methodology and year") +
-    ylim(0, max_val * 1.09) +
+    ylim(0, max_val * 1.13) +
     facet_wrap(~ method_plus_numb, ncol = 3) +
     theme_bw() +
-    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1))
+    theme(axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1),
+          plot.title = element_text(size = rel(1.3)),
+          axis.title = element_text(size = 12),
+          axis.text = element_text(size = 10),
+          strip.text.x = element_text(size = 12))
+
 
 assets_created_by_year_method
 
 
 ```
+
+
+## Recent activities 
+
+In this section we visualize the recent activities of the **current year `r year(now())`**. In particular, we examine the latest asset additions and modifications. Double countings are avoided completely: If a particular asset was **created AND modified in the current year**, it will **only be counted once** and **assigned to the `created` category**. In contrast, an **asset modified in the current year but created in a previous year** will be **flagged as `updated`**.
+
+
+```{r echo=FALSE, warning=FALSE}
+
+assets_of_current_year <- documents_df %>% 
+  filter(year_last_modified == year(date_of_extraction[, 1]) | 
+         year_created == year(date_of_extraction[, 1])) %>%
+  mutate(
+    activity = ifelse(year_last_modified > year_created, "Updated", "Created"),
+    #Workaround to deal with missing created_at information until API is fixed
+    activity = ifelse(is.na(activity), "Updated", activity),
+    quarter = ifelse(activity == "Updated", quarters(date_last_modified),
+                     quarters(date_created))
+  ) %>%
+  count(quarter, activity) %>%
+  group_by(activity) %>%
+  mutate(
+    activity_plus_numb = paste0(activity, " (", sum(n), " overall)")
+  ) %>%
+  {max_val <<- max(.$n)
+  sum_val <<- sum(.$n)
+  .
+  } %>%
+  ggplot(aes(quarter, n)) +
+    geom_bar(stat = "identity", position = "dodge", fill = "#0899CC") +
+    geom_text(aes(label = n), vjust = -0.2) +
+    xlab("Quarter of creation/update") +
+    ylab("Number of assets") +
+    ylim(0, max_val * 1.08) +
+    ggtitle(paste0("Assets created/updated by quarter in ", year(date_of_extraction[, 1]),
+                   " (", sum_val, " overall)")) +
+    facet_wrap( ~activity_plus_numb) +
+    theme_bw() +
+    theme(plot.title = element_text(size = rel(1.3)),
+          axis.title = element_text(size = 12),
+          axis.text = element_text(size = 10),
+          strip.text.x = element_text(size = 12)) 
+    
+
+assets_of_current_year
+
+
+
+
+```
+
+
+
+
 
