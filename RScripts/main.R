@@ -33,7 +33,8 @@ if (class(assets_df) != "try-error") {
   # Process data
   assets_df %<>% filter(name != ".DS_Store", type != "folder") %>%
     mutate(
-      method_acronym = map_name_to_acronym(methodology, config$mapping_rules)
+      method_acronym = map_name_to_acronym(methodology, config$mapping_rules),
+      file_type = tolower(sub(".*[.]", "", name))
     )
   
   # Save processed data

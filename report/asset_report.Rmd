@@ -24,9 +24,35 @@ We only examine assets which are stored in the [main Prime project](https://labc
 
 All information below was gathered by extracting file information using the [LabCase Assets API](https://labcase.softwareag.com/projects/labcase/wiki/LabCase_Asset_API). Currently, the API does not support tags. Therefore, only available file metadata information like `date created`, `date modified`, `folder stored` was processed. In contrast, tag information like, for instance, `asset type` or `scope of usage` could not be taken into account. 
 
-
-
 * **Total** number of **assets**: **`r nrow(documents_df)`**
+* Assets by **file type**:
+
+```{r echo=FALSE, warning=FALSE, fig.width=12}
+
+assets_by_filetype <- documents_df %>%
+  count(file_type) %>%
+  {sum_val <<- sum(.$n)
+  max_val <<- max(.$n)
+  . } %>%
+  ggplot(aes(reorder(file_type, n), n)) +
+    geom_bar(stat = "identity", fill = "#0899CC") +
+    geom_text(aes(label = n), hjust = -0.2) +
+    xlab("File type") +
+    ylab("Number of assets") +
+    ggtitle(paste0("Assets by file type (", sum_val, " overall)")) +
+    ylim(0, max_val * 1.06) +
+    coord_flip() +
+    theme(plot.title = element_text(size = rel(1.2)),
+        axis.title = element_text(size = 12),
+        axis.text = element_text(size = 10)) +
+    theme_bw()
+
+assets_by_filetype
+    
+    
+
+```
+
 
 ## Creation history
 
