@@ -1,0 +1,24 @@
+base_url: https://labcase.softwareag.com/projects/[project identifier]/alfresco/documents
+redmine_key: [Your Redmine API key]
+alfresco_key: [Your Alfresco API key]
+folder_names:
+  - [folder name on root level 1]
+  - [folder name on root level 2]
+  - [folder name on root level 3]
+mapping_rules:
+  - [folder name on root level 1], [abbreviation 1]
+  - [folder name on root level 2], [abbreviation 2]
+  - [folder name on root level 3], [abbreviation 3]
+
+
+
+
+
+
+
+
+
+
+  
+
+
