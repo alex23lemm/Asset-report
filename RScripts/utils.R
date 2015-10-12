@@ -1,3 +1,7 @@
+
+# Utility functions for downloading data ---------------------------------------
+
+
 download_data <- function(folder_names, redmine_key, alfresco_key) {
   root_folder_df <- get_folder_IDs(folder_names, redmine_key,
                                    alfresco_key)
@@ -97,12 +101,7 @@ get_document_list <- function(folder_id, methodology, redmine_key,
   description[index] <- description_text
   
   document_df <- data.frame(methodology, name, id, type, description, last_modified_raw, 
-                     stringsAsFactors = FALSE) %>%
-    mutate(
-      date_last_modified = ymd_hms(last_modified_raw),
-      year_last_modified = year(date_last_modified),
-      quarter_last_modified = quarter(date_last_modified)
-    )
+                     stringsAsFactors = FALSE) 
   
   # Get document details for each record
   document_details_df <- get_document_details(document_df$id, redmine_key,
@@ -161,13 +160,32 @@ get_document_details <- function(document_ids, redmine_key, alfresco_key) {
                                stringsAsFactors = FALSE))
   }
   
-  details_df %<>% mutate(
-    date_created = ymd_hms(created_raw),
-    year_created = year(date_created),
-    quarter_created = quarter(date_created)
-  )
+ 
   return(details_df)
 }
+
+
+# Utility functions for processing the data ------------------------------------
+
+
+process_data <- function(assets_df) {
+  
+ assets_df %<>%  
+    filter(name != ".DS_Store", type != "folder") %>%
+    mutate(
+      method_acronym = map_name_to_acronym(methodology, config$mapping_rules),
+      file_type = tolower(sub(".*[.]", "", name)),
+      date_created = ymd_hms(created_raw),
+      year_created = year(date_created),
+      quarter_created = quarter(date_created),
+      date_last_modified = ymd_hms(last_modified_raw),
+      year_last_modified = year(date_last_modified),
+      quarter_last_modified = quarter(date_last_modified)
+    )
+  
+  return(assets_df)
+}
+
 
 
 map_name_to_acronym <- function(names, mapping) {

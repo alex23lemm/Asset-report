@@ -31,11 +31,7 @@ if (class(assets_df) != "try-error") {
   write.csv(now(), "./data/date_of_extraction.csv", row.names = FALSE)
   
   # Process data
-  assets_df %<>% filter(name != ".DS_Store", type != "folder") %>%
-    mutate(
-      method_acronym = map_name_to_acronym(methodology, config$mapping_rules),
-      file_type = tolower(sub(".*[.]", "", name))
-    )
+  assets_df %<>% process_data
   
   # Save processed data
   write.xlsx(assets_df, "./data/asset_list_processed.xlsx", row.names = FALSE)
