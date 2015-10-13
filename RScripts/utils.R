@@ -81,14 +81,12 @@ get_document_list <- function(folder_id, methodology, redmine_key,
   
   # Check if folder is totally empty
   if (xml_find_all(doc, ".//children") %>%  xml_text == "") {
-    return(data.frame())
+    return(data_frame())
   }
   
   name <- xml_find_all(doc, ".//children/asset/name") %>% xml_text
   id <- xml_find_all(doc, ".//children/asset/id") %>% xml_text
   type <- xml_find_all(doc, ".//children/asset/type") %>% xml_text
-  last_modified_raw <- xml_find_all(doc, ".//children/asset/last_modified") %>% 
-    xml_text
   
   # description is not a mandatory tag for the child elements. Therefore, we 
   # need to identify the indices of those children for which the description 
@@ -100,8 +98,7 @@ get_document_list <- function(folder_id, methodology, redmine_key,
   description <- rep("", length(name))
   description[index] <- description_text
   
-  document_df <- data.frame(methodology, name, id, type, description, last_modified_raw, 
-                     stringsAsFactors = FALSE) 
+  document_df <- data_frame(methodology, name, id, type, description)
   
   # Get document details for each record
   document_details_df <- get_document_details(document_df$id, redmine_key,
@@ -111,7 +108,7 @@ get_document_list <- function(folder_id, methodology, redmine_key,
   # Recursive part: Extract files from all sub folders
   ids <- document_df$id[document_df$type == "folder"]
   for (i in ids) {
-    document_df <- rbind(document_df, 
+    document_df <- bind_rows(document_df, 
                          get_document_list(i, methodology, redmine_key, 
                                            alfresco_key))
   }
@@ -137,7 +134,7 @@ get_document_details <- function(document_ids, redmine_key, alfresco_key) {
   # Returns:
   #   Data frame containing additional information about every document
   
-  details_df <- data.frame()
+  details_df <- data_frame()
   
   for (id in document_ids) {
     
@@ -149,15 +146,29 @@ get_document_details <- function(document_ids, redmine_key, alfresco_key) {
                             content_type_xml()
     ) %>% content(as = "text") %>% read_xml
     
-    name <- xml_find_one(document_details, ".//name") %>% xml_text
-    created_raw <- xml_find_all(document_details, ".//version/created") %>%
-      xml_text %>% last
-    download_url <- xml_find_all(document_details, ".//version/download_url") %>%
-      xml_text %>% first %>% str_extract(".*\\?") %>% 
-      str_sub(1, str_length(.) - 1)
+   name <- xml_find_one(document_details, "/asset/name") %>% 
+      xml_text
+   versions <- xml_find_all(document_details,
+                             "//version[creator != 'LabcaseAdmin']")
+   created_raw <- xml_find_all(versions, "./created") %>% 
+      xml_text %>%
+      last
+   created_by <- xml_find_all(versions, "./creator") %>%
+      xml_text %>%
+      last
+   last_modified_raw <- xml_find_all(versions, "./created") %>%
+      xml_text %>% 
+      first
+   last_modified_by <- xml_find_all(versions, "./creator") %>%
+      xml_text %>%
+      first
+   download_url <- xml_find_all(versions, "./download_url") %>%
+     xml_text %>% first %>% str_extract(".*\\?") %>% 
+     str_sub(1, str_length(.) - 1)
     
-    details_df %<>% rbind(data.frame(name, created_raw, download_url, 
-                               stringsAsFactors = FALSE))
+    details_df %<>% bind_rows(data_frame(name, created_raw, created_by, 
+                                         last_modified_raw, last_modified_by,
+                                         download_url))
   }
   
  
