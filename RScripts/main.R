@@ -34,8 +34,11 @@ if (class(assets_df) != "try-error") {
   assets_df %<>% process_data
   
   # Save processed data
-  write.xlsx(assets_df, "./data/asset_list_processed.xlsx", row.names = FALSE)
   write.csv(assets_df, "./data/asset_list_processed.csv", row.names = FALSE)
+  
+  attributes(assets_df)$class <- c("data.frame")
+  write.xlsx(assets_df, "./data/asset_list_processed.xlsx", row.names = FALSE)
+ 
   
 }
 
