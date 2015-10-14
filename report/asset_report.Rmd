@@ -1,3 +1,9 @@
+
+<img src="figure/logo.png" style="float: right;" />
+&nbsp;
+&nbsp;
+&nbsp;
+
 # Prime Asset Report 
 
 ```{r echo=FALSE, message=FALSE, warning=FALSE}
@@ -33,7 +39,7 @@ All information below was gathered by extracting file information using the [Lab
 * **Total** number of **assets**: **`r nrow(documents_df)`**
 * Assets by **file type**:
 
-```{r echo=FALSE, warning=FALSE, fig.width=12}
+```{r echo=FALSE, warning=FALSE}
 
 assets_by_filetype <- documents_df %>%
   count(file_type) %>%
@@ -153,7 +159,7 @@ assets_created_by_year_method
 
 ## Recent activities 
 
-In this section we visualize the recent activities of the **current year `r year(now())`**. In particular, we examine the latest asset additions and modifications. Double countings are avoided completely: If a particular asset was **created AND modified in the current year**, it will **only be counted once** and **assigned to the `created` category**. In contrast, an **asset modified in the current year but created in a previous year** will be **flagged as `updated`**.
+In this section we visualize the recent activities of the **current year `r year(now())`**. In particular, we examine the latest asset additions and modifications. Double counting is avoided completely: If a particular asset was **created AND modified in the current year**, it will **only be counted once** and **assigned to the `created` category**. In contrast, an **asset modified in the current year but created in a previous year** will be **flagged as `updated`**.
 
 
 ```{r echo=FALSE, warning=FALSE}
@@ -200,6 +206,78 @@ assets_of_current_year
 
 ```
 
+
+## Quality & Assuarance  
+
+This section deals with several Q&A related topics and shows areas which need to be further examined or fixed. 
+
+* Assets with missing description: **`r sum(documents_df$description == "")`**
+
+* Year the last asset update falls into:
+
+```{r echo=FALSE, warning=FALSE}
+
+documents_df %>% 
+  count(year_last_modified) %>%
+  replace_na(list(
+    year_last_modified = "Unknown"
+  )) %>%
+  {max_val <<- max(.$n)
+  sum_val <<- sum(.$n)
+  .  
+  } %>%
+  ggplot(aes(year_last_modified, n)) +
+    geom_bar(stat = "identity", fill = "#0899CC") +
+    geom_text(aes(label = n), vjust = -0.2) +
+    xlab("Year") +
+    ylab("Number of assets") +
+    ylim(0, max_val * 1.08) +
+    ggtitle(paste0("Assets by latest update year (",
+                   sum_val, " overall)")) +
+    theme_bw() +
+    theme(plot.title = element_text(size = rel(1.3)),
+          axis.title = element_text(size = 12),
+          axis.text = element_text(size = 10)) 
+    
+
+
+```
+
+* Year the last asset update falls into by methodology:
+
+```{r echo=FALSE, warning=FALSE, fig.width=10, fig.height=10}
+
+documents_df %>% 
+  count(method_acronym, year_last_modified) %>%
+  group_by(method_acronym) %>%
+  mutate(
+    method_plus_numb = paste0(method_acronym, " (", sum(n), " overall)")
+  ) %>% 
+  replace_na(list(
+    year_last_modified = "Unknown"
+  )) %>%
+  {max_val <<- max(.$n)
+  sum_val <<- sum(.$n)
+  .  
+  } %>%
+  ggplot(aes(year_last_modified, n)) +
+    geom_bar(stat = "identity", fill = "#0899CC") +
+    geom_text(aes(label = n), vjust = -0.2) +
+    xlab("Year") +
+    ylab("Number of assets") +
+    ylim(0, max_val * 1.08) +
+    ggtitle(paste0("Assets by methodology and latest update year (",
+                   sum_val, " overall)")) +
+    facet_wrap(~ method_plus_numb) +
+    theme_bw() +
+    theme(plot.title = element_text(size = rel(1.3)),
+          axis.title = element_text(size = 12),
+          axis.text = element_text(size = 10),
+          axis.text.x = element_text(angle = 30, hjust = 1, vjust = 1)) 
+    
+
+
+```
 
 
 
