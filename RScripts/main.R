@@ -9,6 +9,7 @@ library(lubridate)
 library(xlsx)
 library(yaml)
 library(stringr)
+library(readxl)
 
 library(knitr)
 library(knitrBootstrap)
@@ -21,23 +22,27 @@ base_url <- config$base_url
 # Download, process and save data ----------------------------------------------
 
 
-assets_df <- try(download_data(config$folder_names, config$redmine_key,
+assets_lc_df <- try(download_lc_data(config$folder_names, config$redmine_key,
                            config$alfresco_key), silent = TRUE)
+assets_aris_df <- try(read_excel("./data/aris_output_raw.xls"))
 
-if (class(assets_df) != "try-error") {
+
+if (class(assets_lc_df) != "try-error" & class(assets_aris_df) != "try-error") {
   
-  # Save raw data and download timestamp
-  write.csv(assets_df, "./data/asset_list_raw.csv", row.names = FALSE )
+  # Save raw LC data and download timestamp
+  write.csv(assets_lc_df, "./data/lc_asset_list_raw.csv", row.names = FALSE )
   write.csv(now(), "./data/date_of_extraction.csv", row.names = FALSE)
   
   # Process data
-  assets_df %<>% process_data
+  assets_lc_df %<>% process_lc_data
+  assets_aris_df %<>% process_aris_data
   
   # Save processed data
-  write.csv(assets_df, "./data/asset_list_processed.csv", row.names = FALSE)
+  attributes(assets_lc_df)$class <- c("data.frame")
+  write.xlsx(assets_lc_df, "./data/lc_asset_list_processed.xlsx", row.names = FALSE)
   
-  attributes(assets_df)$class <- c("data.frame")
-  write.xlsx(assets_df, "./data/asset_list_processed.xlsx", row.names = FALSE)
+  attributes(assets_aris_df)$class <- c("data.frame")
+  write.xlsx(assets_aris_df, "./data/aris_asset_list_processed.xlsx", row.names = FALSE)
  
   
 }

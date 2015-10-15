@@ -2,7 +2,7 @@
 # Utility functions for downloading data ---------------------------------------
 
 
-download_data <- function(folder_names, redmine_key, alfresco_key) {
+download_lc_data <- function(folder_names, redmine_key, alfresco_key) {
   root_folder_df <- get_folder_IDs(folder_names, redmine_key,
                                    alfresco_key)
   documents_df <- data.frame()
@@ -180,7 +180,7 @@ get_document_details <- function(document_ids, redmine_key, alfresco_key) {
 # Utility functions for processing the data ------------------------------------
 
 
-process_data <- function(assets_df) {
+process_lc_data <- function(assets_df) {
   
  assets_df %<>%  
     filter(name != ".DS_Store", type != "folder") %>%
@@ -198,6 +198,33 @@ process_data <- function(assets_df) {
   return(assets_df)
 }
 
+process_aris_data <- function(assets_df) {
+  
+  assets_df$Type <- NULL
+  
+  assets_df %<>% 
+    mutate_each(funs(factor)) %>% 
+    mutate(
+      Name = as.character(Name),
+      GUID = as.character(GUID),
+      labcase_id = regexec("https://labcase.softwareag.com/projects/.*/alfresco/documents/(.*)/download",
+                           assets_df$`Link 1`) %>% 
+        regmatches(assets_df$`Link 1`, .) %>%
+        sapply(function(x)x[2]),
+      labcase_project = regexec("https://labcase.softwareag.com/projects/(.*)/alfresco/documents/.*/download",
+                           assets_df$`Link 1`) %>% 
+        regmatches(assets_df$`Link 1`, .) %>%
+        sapply(function(x)x[2]),
+      Identifier = as.character(Identifier),
+      `Description/Definition` = as.character(`Description/Definition`),
+      `Short description` = as.character(`Short description`),
+      `Title 1` = as.character(`Title 1`),
+      `Link 1` = as.character(`Link 1`),
+      `Time of generation` = mdy_hms(`Time of generation`)
+    )
+  
+  return(assets_df)
+}
 
 
 map_name_to_acronym <- function(names, mapping) {

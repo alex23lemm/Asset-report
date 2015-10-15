@@ -13,14 +13,20 @@ library(tidyr)
 library(ggplot2)
 library(grid)
 library(lubridate)
+library(readxl)
+
+source("../RScripts/utils.R")
 
 
-documents_df <- read.csv("../data/asset_list_processed.csv", 
-                         stringsAsFactors = FALSE) %>%
+assets_lc_df <- read_excel("../data/labcase_asset_list_processed.xlsx") %>%
   mutate(
     date_created = ymd_hms(date_created),
     date_last_modified = ymd_hms(date_last_modified)
   )
+
+assets_aris_df <- read_excel("../data/aris_asset_list_processed.xlsx") %>% 
+    process_aris_data
+
 date_of_extraction <- read.csv("../data/date_of_extraction.csv")
 
 
@@ -31,22 +37,29 @@ Data as of  **`r as.character(date_of_extraction[1,])`**
 
 ## General Information 
 
-The `Prime Asset Report` provides information about released Prime assets from a LabCase point of view. 
-We only examine assets which are stored in the [main Prime project](https://labcase.softwareag.com/projects/prime/alfresco/documents) in LabCase in one of the methodology-specific folders. Those assets are available to our user base via the GCS Portal search. 
+The `Prime Asset Report` provides information about released Prime assets from a LabCase and from a ARIS point of view. 
+In the first chapter `LabCase asset anaylsis ` we examine assets which are stored in the [main Prime project](https://labcase.softwareag.com/projects/prime/alfresco/documents) in LabCase in one of the methodology-specific folders. Those assets are available to our user base via the GCS Portal search. 
+
+In the second chapter `ARIS asset analysis` we examine assets objects which are part of the latest Prime ARIS release database. Those assets are available to our user base via ARIS Connect/ARIS Client.
+
+In the third part we merge the LabCase data set and the ARIS data set in order to reveal which assets are not mentinoned/listed in the other system and vice versa.
+
+
+
+
+## LabCase asset anaylsis
 
 All information below was gathered by extracting file information using the [LabCase Assets API](https://labcase.softwareag.com/projects/labcase/wiki/LabCase_Asset_API). Currently, the API does not support tags. Therefore, only available file metadata information like `date created`, `date modified`, `folder stored` was processed. In contrast, tag information like, for instance, `asset type` or `scope of usage` could not be taken into account. 
 
-* **Total** number of **assets**: **`r nrow(documents_df)`**
+* **Total** number of LabCase **assets**: **`r nrow(assets_lc_df)`**
 
-
-
-## Creation history
+### Creation history
 
 All charts in this section deal with the original date the assets were created and stored in the main Prime project.
 
 ```{r echo=FALSE, warning=FALSE, fig.width=12}
 
-assets_created_by_year <- documents_df %>%
+assets_created_by_year <- assets_lc_df %>%
   count(year_created) %>%
   replace_na(list(year_created = "Unknown")) %>%
   {max_val <<- max(.$n)
@@ -66,7 +79,7 @@ assets_created_by_year <- documents_df %>%
     
 
 
-assets_created_by_method <- documents_df %>%
+assets_created_by_method <- assets_lc_df %>%
   count(method_acronym) %>%
   {max_val <<- max(.$n)
   sum_val <<- sum(.$n)
@@ -99,7 +112,7 @@ print(assets_created_by_method, vp = viewport(layout.pos.row = 1:2, layout.pos.c
 
 ```{r echo=FALSE, warning=FALSE, fig.width=8, fig.height=8}
 
-documents_df %>%
+assets_lc_df %>%
   count(year_created, method_acronym) %>%
   group_by(method_acronym) %>%
   mutate(
@@ -125,17 +138,19 @@ documents_df %>%
 
 ```
 
-## Update history
+### Update history and Q&A
 
 All charts in this section deal with the date the assets were updated the last time in the main Prime project. In addition, we highight several Q&A related topics and show areas which need to be further examined or fixed. 
 
-* Assets with missing description: **`r sum(documents_df$description == "")`**
+* Assets with missing description: **`r sum(assets_lc_df$description == "")`**
+
+* Assets with missing title: **`r sum(assets_lc_df$title == "")`**
 
 * Year the last asset update falls into:
 
 ```{r echo=FALSE, warning=FALSE}
 
-documents_df %>% 
+assets_lc_df %>% 
   count(year_last_modified) %>%
   replace_na(list(
     year_last_modified = "Unknown"
@@ -165,7 +180,7 @@ documents_df %>%
 
 ```{r echo=FALSE, warning=FALSE, fig.width=8, fig.height=8}
 
-documents_df %>% 
+assets_lc_df %>% 
   count(method_acronym, year_last_modified) %>%
   group_by(method_acronym) %>%
   mutate(
@@ -200,14 +215,14 @@ documents_df %>%
 
 
 
-## Recent activities 
+### Recent activities 
 
 In this section we visualize the recent activities of the **current year `r year(now())`**. In particular, we examine the latest asset additions and modifications. Double counting is avoided completely: If a particular asset was **created AND modified in the current year**, it will **only be counted once** and **assigned to the `created` category**. In contrast, an **asset modified in the current year but created in a previous year** will be **flagged as `updated`**.
 
 
 ```{r echo=FALSE, warning=FALSE}
 
-documents_df %>% 
+assets_lc_df %>% 
   filter(year_last_modified == year(date_of_extraction[, 1]) | 
          year_created == year(date_of_extraction[, 1])) %>%
   mutate(
@@ -245,7 +260,7 @@ documents_df %>%
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=10, fig.height=9}
 
-documents_df %>% 
+assets_lc_df %>% 
   filter(year_last_modified == year(date_of_extraction[, 1]) | 
          year_created == year(date_of_extraction[, 1])) %>%
   mutate(
@@ -285,11 +300,11 @@ documents_df %>%
 
 ```
 
-## Provided file types
+### Provided file types
 
 ```{r echo=FALSE, warning=FALSE}
 
-documents_df %>%
+assets_lc_df %>%
   count(file_type) %>%
   {sum_val <<- sum(.$n)
   max_val <<- max(.$n)
@@ -309,5 +324,116 @@ documents_df %>%
 
 ```
 
+## ARIS asset analysis
+
+All information below was calculated based on an ARIS report that was extracted form the latest Prime ARIS release database. 
+
+* **Total** number of ARIS **assets**: **`r nrow(assets_aris_df)`**
+
+
+### Provided asset types
+
+
+```{r echo=FALSE}
+
+
+assets_aris_df %>% 
+  count(Prime_Asset_Type) %>%
+  ggplot(aes(reorder(Prime_Asset_Type, n), n)) +
+    geom_bar(stat = "identity", fill = "#0899CC") +
+    geom_text(aes(label = n), hjust = -0.2) +
+    coord_flip() +
+    theme_bw()
+
+```
+
+### Link 1 attribute investigation
+
+The `Link 1` attribute is by far the most important information because parts of it (the Alfresco ID) will be used as the primary key to merge the LabCasa asset data with the ARIS asset data later. 
+
+
+```{r echo=FALSE, fig.height=6, fig.width=6}
+
+assets_aris_df %>% 
+  select(labcase_id) %>%
+  mutate(
+    labcase_id = ifelse(is.na(labcase_id), "LC link missing", "LC link present")
+  )  %>% 
+  ggplot(aes(labcase_id)) +
+    geom_bar(fill = "#0899CC") +
+    geom_text(stat = 'bin', aes(label= ..count..), vjust = -1) +
+    theme_bw() 
+
+
+```
+
+* Of `r nrow(assets_aris_df)` assets in ARIS `r sum(!is.na(assets_aris_df$labcase_id))` possess a `Link 1` attribute
+
+* Examing the `Link 1` attribute further reveals that only `r sum(!is.na(unique(assets_aris_df$labcase_id)))` are really unique. This corresponds to the number of ARIS assets we can expect to successfully merge the most with the LabCase data by `Alfresco ID` later
+
+* The following ARIS assets share the same `Link 1` attribute and should be further examined and merged in ARIS:
+
+```{r echo=FALSE}
+
+kable(assets_aris_df %>% 
+  filter(!is.na(labcase_id)) %>%
+  group_by(labcase_id) %>% 
+  mutate(
+    group_occ = n()
+  ) %>%
+  filter(group_occ > 1) %>%
+  select(Name, labcase_id, GUID) %>%
+  arrange(labcase_id))
+
+```
+
+### Referenced LabCase project
+
+```{r fig.width=15}
+
+assets_aris_df %>%
+  count(labcase_project) %>%
+  ggplot(aes(labcase_project, n)) +
+    geom_bar(stat = "identity", fill = "#0899CC") +
+    geom_text(aes(label = n)) +
+    coord_flip() +
+    theme_bw()
+
+
+```
+
+
+
+
+
+
+
+
+## Merge LabCase and ARIS data
+
+```{r}
+
+lc_reduced <- assets_lc_df %>% select(name, id)
+aris_reduced <- assets_aris_df %>% select(Name, labcase_id)
+
+# Check which assets in ARIS have a match in LabCase 
+
+dim(semi_join(aris_reduced, lc_reduced, by = c("labcase_id" = "id")))
+
+
+# Check which assests in LabCase have a match in ARIS
+
+dim(semi_join(lc_reduced, aris_reduced, by = c("id" = "labcase_id")))
+
+
+
+
+```
+
+```{r}
+
+dim(anti_join(lc_reduced, aris_reduced, by = c("id" = "labcase_id")))
+
+```
 
 
