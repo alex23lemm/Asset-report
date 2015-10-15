@@ -85,6 +85,7 @@ get_document_list <- function(folder_id, methodology, redmine_key,
   }
   
   name <- xml_find_all(doc, ".//children/asset/name") %>% xml_text
+  title <- xml_find_all(doc, ".//children/asset/title") %>% xml_text
   id <- xml_find_all(doc, ".//children/asset/id") %>% xml_text
   type <- xml_find_all(doc, ".//children/asset/type") %>% xml_text
   
@@ -98,7 +99,7 @@ get_document_list <- function(folder_id, methodology, redmine_key,
   description <- rep("", length(name))
   description[index] <- description_text
   
-  document_df <- data_frame(methodology, name, id, type, description)
+  document_df <- data_frame(methodology, name, title, id, type, description)
   
   # Get document details for each record
   document_details_df <- get_document_details(document_df$id, redmine_key,
