@@ -18,7 +18,7 @@ library(readxl)
 source("../RScripts/utils.R")
 
 
-assets_lc_df <- read_excel("../data/labcase_asset_list_processed.xlsx") %>%
+assets_lc_df <- read_excel("../data/lc_asset_list_processed.xlsx") %>%
   mutate(
     date_created = ymd_hms(date_created),
     date_last_modified = ymd_hms(date_last_modified)
@@ -260,7 +260,7 @@ assets_lc_df %>%
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=10, fig.height=9}
 
-assets_lc_df %>% 
+tt <- assets_lc_df %>% 
   filter(year_last_modified == year(date_of_extraction[, 1]) | 
          year_created == year(date_of_extraction[, 1])) %>%
   mutate(
@@ -270,7 +270,11 @@ assets_lc_df %>%
     quarter = ifelse(activity == "Updated", quarters(date_last_modified),
                      quarters(date_created))
   ) %>%
-  count(method_acronym, quarter, activity) %>%
+  count(method_acronym, quarter, activity) %>% 
+  bind_rows(., expand.grid(method_acronym = levels(as.factor(.$method_acronym)),
+                              quarter = levels(as.factor(.$quarter)),
+                              activity = levels(as.factor(.$activity)),
+                              n = NA)) %>%
   group_by(method_acronym) %>%
   mutate(
     method_plus_numb = paste0(method_acronym, " (", sum(n), " overall)")
@@ -378,10 +382,7 @@ assets_aris_df %>%
 kable(assets_aris_df %>% 
   filter(!is.na(labcase_id)) %>%
   group_by(labcase_id) %>% 
-  mutate(
-    group_occ = n()
-  ) %>%
-  filter(group_occ > 1) %>%
+  filter(n() > 1) %>%
   select(Name, labcase_id, GUID) %>%
   arrange(labcase_id))
 
