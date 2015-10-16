@@ -147,31 +147,29 @@ get_document_details <- function(document_ids, redmine_key, alfresco_key) {
                             content_type_xml()
     ) %>% content(as = "text") %>% read_xml
     
-   name <- xml_find_one(document_details, "/asset/name") %>% 
-      xml_text
+   name <- xml_find_one(document_details, "/asset/name") %>% xml_text
+   created_raw <- xml_find_one(document_details, "/asset/created") %>% xml_text
+   created_by <- xml_find_one(document_details, "/asset/creator") %>% xml_text
+   # using xml_find_all instead of xml_find_one because like this no error is 
+   # thrown if there is no match. Instead an empty character vector is returned
+   download_url <- xml_find_all(document_details,
+                                "/asset[type != 'folder']/labcase_download_url") %>% xml_text
+   if (length(download_url) == 0)
+     download_url <- NA 
+   
    versions <- xml_find_all(document_details,
                              "//version[creator != 'LabcaseAdmin']")
-   created_raw <- xml_find_all(versions, "./created") %>% 
-      xml_text %>%
-      last
-   created_by <- xml_find_all(versions, "./creator") %>%
-      xml_text %>%
-      last
-   last_modified_raw <- xml_find_all(versions, "./created") %>%
-      xml_text %>% 
+   
+   
+   last_modified_raw <- xml_find_all(versions, "./created") %>% xml_text %>% 
       first
-   last_modified_by <- xml_find_all(versions, "./creator") %>%
-      xml_text %>%
+   last_modified_by <- xml_find_all(versions, "./creator") %>% xml_text %>%
       first
-   download_url <- xml_find_all(versions, "./download_url") %>%
-     xml_text %>% first %>% str_extract(".*\\?") %>% 
-     str_sub(1, str_length(.) - 1)
-    
+   
     details_df %<>% bind_rows(data_frame(name, created_raw, created_by, 
                                          last_modified_raw, last_modified_by,
                                          download_url))
   }
-  
  
   return(details_df)
 }
@@ -203,10 +201,7 @@ process_aris_data <- function(assets_df) {
   assets_df$Type <- NULL
   
   assets_df %<>% 
-    mutate_each(funs(factor)) %>% 
     mutate(
-      Name = as.character(Name),
-      GUID = as.character(GUID),
       labcase_id = regexec("https://labcase.softwareag.com/projects/.*/alfresco/documents/(.*)/download",
                            assets_df$`Link 1`) %>% 
         regmatches(assets_df$`Link 1`, .) %>%
@@ -214,13 +209,7 @@ process_aris_data <- function(assets_df) {
       labcase_project = regexec("https://labcase.softwareag.com/projects/(.*)/alfresco/documents/.*/download",
                            assets_df$`Link 1`) %>% 
         regmatches(assets_df$`Link 1`, .) %>%
-        sapply(function(x)x[2]),
-      Identifier = as.character(Identifier),
-      `Description/Definition` = as.character(`Description/Definition`),
-      `Short description` = as.character(`Short description`),
-      `Title 1` = as.character(`Title 1`),
-      `Link 1` = as.character(`Link 1`),
-      `Time of generation` = mdy_hms(`Time of generation`)
+        sapply(function(x)x[2])
     )
   
   return(assets_df)
