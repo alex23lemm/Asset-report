@@ -3,13 +3,14 @@
 library(httr)
 library(plyr)
 library(dplyr)
-library(magrittr)
 library(xml2)
 library(lubridate)
 library(xlsx)
 library(yaml)
 library(stringr)
+library(readr)
 library(readxl)
+library(magrittr)
 
 library(knitr)
 library(knitrBootstrap)
@@ -30,18 +31,20 @@ assets_aris_df <- try(read_excel("./data/aris_output_raw.xls"))
 if (class(assets_lc_df) != "try-error" & class(assets_aris_df) != "try-error") {
   
   # Save raw LC data and download timestamp
-  write.csv(assets_lc_df, "./data/lc_asset_list_raw.csv", row.names = FALSE )
+  write_csv(assets_lc_df, "./data/lc_asset_list_raw.csv")
   write.csv(now(), "./data/date_of_extraction.csv", row.names = FALSE)
   
   # Process data
-  assets_lc_df %<>% process_lc_data
-  assets_aris_df %<>% process_aris_data
+  assets_lc_df <- process_lc_data(assets_lc_df)
+  assets_aris_df <- process_aris_data(assets_aris_df)
   
   # Save processed data
   attributes(assets_lc_df)$class <- c("data.frame")
+  write_csv(assets_lc_df, "./data/lc_asset_list_processed.csv")
   write.xlsx(assets_lc_df, "./data/lc_asset_list_processed.xlsx", row.names = FALSE)
   
   attributes(assets_aris_df)$class <- c("data.frame")
+  write_csv(assets_aris_df, "./data/aris_asset_list_processed.csv")
   write.xlsx(assets_aris_df, "./data/aris_asset_list_processed.xlsx", row.names = FALSE)
  
   
