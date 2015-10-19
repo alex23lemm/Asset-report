@@ -152,10 +152,10 @@ get_document_details <- function(document_ids, redmine_key, alfresco_key) {
    created_by <- xml_find_one(document_details, "/asset/creator") %>% xml_text
    # using xml_find_all instead of xml_find_one because like this no error is 
    # thrown if there is no match. Instead an empty character vector is returned
-   download_url <- xml_find_all(document_details,
-                                "/asset[type != 'folder']/labcase_download_url") %>% xml_text
-   if (length(download_url) == 0)
-     download_url <- NA 
+   #download_url <- xml_find_all(document_details,
+  #                              "/asset[type != 'folder']/labcase_download_url") %>% xml_text
+   #if (length(download_url) == 0)
+    # download_url <- NA 
    
    versions <- xml_find_all(document_details,
                              "//version[creator != 'LabcaseAdmin']")
@@ -165,6 +165,9 @@ get_document_details <- function(document_ids, redmine_key, alfresco_key) {
       first
    last_modified_by <- xml_find_all(versions, "./creator") %>% xml_text %>%
       first
+   download_url <- xml_find_all(versions, "./download_url") %>% xml_text %>%
+     last %>% str_extract("^.*\\/download")
+   
    
     details_df %<>% bind_rows(data_frame(name, created_raw, created_by, 
                                          last_modified_raw, last_modified_by,
