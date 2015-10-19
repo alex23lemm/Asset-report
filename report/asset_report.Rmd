@@ -37,12 +37,12 @@ Data as of  **`r as.character(date_of_extraction[1,])`**
 
 ## General Information 
 
-The `Prime Asset Report` provides information about released Prime assets from a LabCase and from a ARIS point of view. 
-In the first chapter `LabCase asset anaylsis ` we examine assets which are stored in the [main Prime project](https://labcase.softwareag.com/projects/prime/alfresco/documents) in LabCase in one of the methodology-specific folders. Those assets are available to our user base via the GCS Portal search. 
+The **Prime Asset Report** provides information about released Prime assets from a LabCase and from a ARIS point of view. 
+In the first chapter **LabCase asset anaylsis** we examine assets which are stored in the [main Prime project](https://labcase.softwareag.com/projects/prime/alfresco/documents) in LabCase in one of the methodology-specific folders. Those assets are available to our user base via the GCS Portal search. 
 
-In the second chapter `ARIS asset analysis` we examine assets objects which are part of the latest Prime ARIS release database. Those assets are available to our user base via ARIS Connect/ARIS Client.
+In the second chapter **ARIS asset analysis** we examine assets objects which are part of the latest Prime ARIS release database. Those assets are available to our user base via ARIS Connect/ARIS Client.
 
-In the third part we merge the LabCase data set and the ARIS data set in order to reveal which assets are not mentinoned/listed in the other system and vice versa.
+In the third part ** Merged LabCase and ARIS asset analysis** we merge the LabCase data set and the ARIS data set in order to reveal which assets are not mentinoned/listed in the other system and vice versa.
 
 
 
@@ -142,9 +142,9 @@ assets_lc_df %>%
 
 All charts in this section deal with the date the assets were updated the last time in the main Prime project. In addition, we highight several Q&A related topics and show areas which need to be further examined or fixed. 
 
-* Assets with missing description: **`r sum(assets_lc_df$description == "")`**
+* Assets with missing description: **`r sum(is.na(assets_lc_df$description))`**
 
-* Assets with missing title: **`r sum(assets_lc_df$title == "")`**
+* Assets with missing title: **`r sum(is.na(assets_lc_df$title))`**
 
 * Year the last asset update falls into:
 
@@ -201,7 +201,7 @@ assets_lc_df %>%
     ylim(0, max_val * 1.08) +
     ggtitle(paste0("Assets by methodology and latest update year (",
                    sum_val, " overall)")) +
-    facet_wrap(~ method_plus_numb) +
+    facet_wrap(~ method_plus_numb, ncol = 3) +
     theme_bw() +
     theme(plot.title = element_text(size = rel(1.3)),
           axis.title = element_text(size = 12),
@@ -227,8 +227,6 @@ assets_lc_df %>%
          year_created == year(date_of_extraction[, 1])) %>%
   mutate(
     activity = ifelse(year_last_modified > year_created, "Updated", "Created"),
-    #Workaround to deal with missing created_at information until API is fixed
-    activity = ifelse(is.na(activity), "Updated", activity),
     quarter = ifelse(activity == "Updated", quarters(date_last_modified),
                      quarters(date_created))
   ) %>%
@@ -246,8 +244,8 @@ assets_lc_df %>%
     geom_text(aes(label = n), vjust = -0.2) +
     xlab("Quarter of creation/update") +
     ylab("Number of assets") +
-    ylim(0, max_val * 1.08) +
-    ggtitle(paste0("Assets created/updated in ", year(date_of_extraction[, 1]),
+    ylim(0, max_val * 1.09) +
+    ggtitle(paste0("Assets created or updated in ", year(date_of_extraction[, 1]),
                    " (", sum_val, " overall)\n by quarter")) +
     facet_wrap( ~activity_plus_numb) +
     theme_bw() +
@@ -260,13 +258,11 @@ assets_lc_df %>%
 
 ```{r echo=FALSE, warning=FALSE, message=FALSE, fig.width=10, fig.height=9}
 
-tt <- assets_lc_df %>% 
+assets_lc_df %>% 
   filter(year_last_modified == year(date_of_extraction[, 1]) | 
          year_created == year(date_of_extraction[, 1])) %>%
   mutate(
     activity = ifelse(year_last_modified > year_created, "Updated", "Created"),
-    #Workaround to deal with missing created_at information until API is fixed
-    activity = ifelse(is.na(activity), "Updated", activity),
     quarter = ifelse(activity == "Updated", quarters(date_last_modified),
                      quarters(date_created))
   ) %>%
@@ -277,24 +273,24 @@ tt <- assets_lc_df %>%
                               n = NA)) %>%
   group_by(method_acronym) %>%
   mutate(
-    method_plus_numb = paste0(method_acronym, " (", sum(n), " overall)")
+    method_plus_numb = paste0(method_acronym, " (", sum(n, na.rm = TRUE), " overall)")
   ) %>% 
   rename(
     Activity = activity
-  ) %>%
-  {max_val <<- max(.$n)
-  sum_val <<- sum(.$n)
+  ) %>% 
+  {max_val <<- max(.$n, na.rm = TRUE)
+  sum_val <<- sum(.$n, na.rm = TRUE)
   .} %>%
   ggplot(aes(quarter, n, fill = Activity)) +
     geom_bar(stat = "identity", position = "dodge") +
     geom_text(aes(label = n), position = position_dodge(.9), vjust = -0.2) +
     xlab("Quarter of creation/update") +
     ylab("Number of assets") +
-    ylim(0, max_val * 1.09) +
+    ylim(0, max_val * 1.11) +
     #coord_flip()
     ggtitle(paste0("Assets created/updated in ", year(date_of_extraction[, 1]),
                    " (", sum_val, " overall)\n by methodology and quarter")) +
-    facet_wrap( ~ method_plus_numb) +
+    facet_wrap( ~ method_plus_numb, ncol = 3) +
     scale_fill_manual(values = c("#04B2E0", "#666666")) +
     theme_bw() +
     theme(plot.title = element_text(size = rel(1.3)),
@@ -330,7 +326,7 @@ assets_lc_df %>%
 
 ## ARIS asset analysis
 
-All information below was calculated based on an ARIS report that was extracted form the latest Prime ARIS release database. 
+All information below was calculated based on an ARIS report that was extracted form **the latest Prime ARIS release database**. 
 
 * **Total** number of ARIS **assets**: **`r nrow(assets_aris_df)`**
 
@@ -343,17 +339,40 @@ All information below was calculated based on an ARIS report that was extracted 
 
 assets_aris_df %>% 
   count(Prime_Asset_Type) %>%
+  replace_na(list(Prime_Asset_Type = "Unknown")) %>%
+  {max_val <<- max(.$n, na.rm = TRUE)
+  .  
+  } %>%
   ggplot(aes(reorder(Prime_Asset_Type, n), n)) +
     geom_bar(stat = "identity", fill = "#0899CC") +
     geom_text(aes(label = n), hjust = -0.2) +
+    xlab("Asset type") +
+    ylab("Number of assets") +
+    ggtitle("Assets by type (ARIS)") +
+    ylim(0, max_val * 1.08) +
     coord_flip() +
     theme_bw()
 
 ```
 
+* For the following ARIS assets the `Prime_Asset_Type` attribute **is not set**:
+
+```{r echo=FALSE}
+
+kable(
+  assets_aris_df %>% 
+    filter(is.na(Prime_Asset_Type)) %>% 
+    select(Name, GUID)
+)
+
+```
+
+
+
+
 ### Link 1 attribute investigation
 
-The `Link 1` attribute is by far the most important information because parts of it (the Alfresco ID) will be used as the primary key to merge the LabCasa asset data with the ARIS asset data later. 
+The `Link 1` attribute is by far the most important information because parts of it (the Alfresco ID) **will be used as the primary key to merge** the **LabCasa asset data** and the **ARIS asset data** later. 
 
 
 ```{r echo=FALSE, fig.height=6, fig.width=6}
@@ -363,40 +382,82 @@ assets_aris_df %>%
   mutate(
     labcase_id = ifelse(is.na(labcase_id), "LC link missing", "LC link present")
   )  %>% 
-  ggplot(aes(labcase_id)) +
-    geom_bar(fill = "#0899CC") +
-    geom_text(stat = 'bin', aes(label= ..count..), vjust = -1) +
-    theme_bw() 
+  count(labcase_id) %>%
+  {max_val <<- max(.$n)
+  .  
+  } %>%
+ggplot(aes(labcase_id, n)) +
+  geom_bar(stat = "identity", fill = "#0899CC") +
+  geom_text(aes(label = n), vjust = -1) +
+  xlab("Link status") +
+  ylab("Number of assets") +
+  ggtitle("ARIS assets by Link 1 status") +
+  ylim(0, max_val * 1.08) +
+  theme_bw() 
 
 
 ```
 
-* Of `r nrow(assets_aris_df)` assets in ARIS `r sum(!is.na(assets_aris_df$labcase_id))` possess a `Link 1` attribute
+* Of **`r nrow(assets_aris_df)` assets in ARIS `r sum(!is.na(assets_aris_df$labcase_id))`** possess a `Link 1` attribute
 
-* Examing the `Link 1` attribute further reveals that only `r sum(!is.na(unique(assets_aris_df$labcase_id)))` are really unique. This corresponds to the number of ARIS assets we can expect to successfully merge the most with the LabCase data by `Alfresco ID` later
+* Examing the `Link 1` attribute further reveals that **only `r sum(!is.na(unique(assets_aris_df$labcase_id)))` are really unique**. This corresponds to the number of ARIS assets we **can expect to successfully merge the most** with the LabCase data by `Alfresco ID` later
 
-* The following ARIS assets share the same `Link 1` attribute and should be further examined and merged in ARIS:
+* The following ARIS assets share the same `Link 1` attribute and **should be further examined and merged in ARIS**:
 
 ```{r echo=FALSE}
 
-kable(assets_aris_df %>% 
+kable(
+  assets_aris_df %>% 
   filter(!is.na(labcase_id)) %>%
   group_by(labcase_id) %>% 
   filter(n() > 1) %>%
   select(Name, labcase_id, GUID) %>%
-  arrange(labcase_id))
+  arrange(labcase_id)
+  )
 
 ```
 
+* In the further analysis **we will remove those "duplicated" ARIS observations** that share the same `Link 1` attribute. Only the assets where the respective `Link 1` attribute appears first wil remain in the dataset
+
+```{r echo=FALSE}
+
+original_obs_numb <- nrow(assets_aris_df)
+
+duplicated_assets_guid <- assets_aris_df %>% 
+  filter(!is.na(labcase_id)) %>%
+  group_by(labcase_id) %>% 
+  slice(-1) %$%
+  GUID
+
+assets_aris_df %<>% filter(!GUID %in% duplicated_assets_guid)
+
+
+
+```
+
+* Therefore, the ARIS observations will be **reduced from `r original_obs_numb` to 
+`r nrow(assets_aris_df)`**
+
+
 ### Referenced LabCase project
 
-```{r fig.width=15}
+* In this section we will examine which LabCase projects are referenced by those ARIS assets that possess a `Link 1` attribute **(`r sum(!is.na(assets_aris_df$labcase_id))` of `r nrow(assets_aris_df)`)**
+
+```{r echo=FALSE, fig.width=15}
 
 assets_aris_df %>%
+  filter(!is.na(labcase_id)) %>%
   count(labcase_project) %>%
-  ggplot(aes(labcase_project, n)) +
+  {max_val <<- max(.$n)
+  .  
+  } %>%
+  ggplot(aes(reorder(labcase_project, n), n)) +
     geom_bar(stat = "identity", fill = "#0899CC") +
-    geom_text(aes(label = n)) +
+    geom_text(aes(label = n), hjust = -0.2) +
+    xlab("Project name") +
+    ylab("Number of projects") +
+    ylim(0, max_val * 1.08) +
+    ggtitle("Assets by LabCase project they reside in") +
     coord_flip() +
     theme_bw()
 
@@ -405,36 +466,91 @@ assets_aris_df %>%
 
 
 
+## Merged LabCase and ARIS asset analysis
 
+```{r echo=FALSE}
 
+aris_lc_match_numb <- assets_aris_df %>% 
+  semi_join(assets_lc_df, by = c("labcase_id" = "id")) %>% 
+  nrow
 
+lc_aris_match_numb <- assets_lc_df %>% 
+  semi_join(assets_aris_df, by = c("id" = "labcase_id")) %>% 
+  nrow
 
-
-## Merge LabCase and ARIS data
-
-```{r}
-
-lc_reduced <- assets_lc_df %>% select(name, id)
-aris_reduced <- assets_aris_df %>% select(Name, labcase_id)
-
-# Check which assets in ARIS have a match in LabCase 
-
-dim(semi_join(aris_reduced, lc_reduced, by = c("labcase_id" = "id")))
-
-
-# Check which assests in LabCase have a match in ARIS
-
-dim(semi_join(lc_reduced, aris_reduced, by = c("id" = "labcase_id")))
-
-
-
+aris_main_prime_numb <- assets_aris_df %>% 
+  filter(labcase_project == "prime") %>% 
+  nrow
 
 ```
 
-```{r}
 
-dim(anti_join(lc_reduced, aris_reduced, by = c("id" = "labcase_id")))
+* **Records of the ARIS dataset** that can be **combined by extracted Alfresco ID** with **the LabCase dataset**: **`r aris_lc_match_numb`**
+
+* **Records of the LabCase dataset** that can be combined by extracted Alfresco ID with **the ARIS dataset**: **`r lc_aris_match_numb`**
+
+* Fortunately, both numbers match exactly. However, the **number of matching records between ARIS and LabCase (`r aris_lc_match_numb`)** is **higher than** those **ARIS records
+  that are linked to the main Prime project in LabCase (`r aris_main_prime_numb`)**
+  
+* This can only have one reason:
+  * **ARIS assets flagged as residing in a LC working project** were **already moved to the main LC Prime project**. But their `Link 1` attribute was **not updated** accordingly
+
+* We will investigate this further in the next section
+
+
+### Link 1 points to working project in LC but asset present in main Prime Labcase project
+
+* ARIS assets that posses a `Link 1` attribute that **points to a LC Prime working project** but for which the **physcial asset was already moved to the main LC Prime project**:
+
+```{r echo=FALSE}
+
+aris_non_prime_lc_match_numb <- assets_aris_df %>% 
+    semi_join(assets_lc_df, by = c("labcase_id" = "id")) %>%
+    filter(labcase_project != "prime") %>%
+    select(Name, `LabCase ID` = labcase_id, `LC project` = labcase_project, GUID)
+
+kable(
+  aris_non_prime_lc_match_numb
+)
 
 ```
+
+* The `Link 1` attribute for the assets above **needs to be updated in ARIS** by setting the project identifier to `prime` in the link
+
+* However the **asset list above is bigger (`r nrow(aris_non_prime_lc_match_numb)` records)** than the **original observed difference of `r aris_lc_match_numb`** - **`r aris_main_prime_numb` = `r aris_lc_match_numb - aris_main_prime_numb`**
+
+* This can only mean that from the **original `r aris_main_prime_numb` ARIS assets** that possess a `Link 1 ` attribute that points to the main LC Prime project, **`r nrow(aris_non_prime_lc_match_numb) - (aris_lc_match_numb - aris_main_prime_numb)` have dead LabCase links**
+
+* We will check this assumption in the next section
+
+
+### Link 1 points to main Prime project in LC but asset removed in LabCase
+
+```{r echo=FALSE}
+
+aris_link1_not_lc <- assets_aris_df %>% filter(labcase_project == "prime") %>%
+    anti_join(assets_lc_df, by = c("labcase_id" = "id")) %>%
+    select(Name, `Original LabCase ID`= labcase_id, GUID)
+
+```
+
+
+* ARIS assets that possess a `Link 1` attribute that **points to the main Prime project** but for which the **physical asset under the original ID does not exist** anymore **(`r nrow(aris_link1_not_lc)` total)**:
+
+```{r echo=FALSE}
+
+kable(
+  assets_aris_df %>% filter(labcase_project == "prime") %>%
+    anti_join(assets_lc_df, by = c("labcase_id" = "id")) %>%
+    select(Name, `Original LabCase ID`= labcase_id, GUID)
+)
+
+```
+
+
+
+
+
+
 
 
