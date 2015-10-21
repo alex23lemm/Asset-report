@@ -14,26 +14,29 @@ library(ggplot2)
 library(grid)
 library(lubridate)
 library(readxl)
+library(magrittr)
+library(xlsx)
 
 source("../RScripts/utils.R")
 
 
-assets_lc_df <- read_excel("../data/lc_asset_list_processed.xlsx") %>%
+assets_lc_df <- read_excel("../data_processed/labcase_asset_list_complete.xlsx") %>%
   mutate(
     date_created = ymd_hms(date_created),
     date_last_modified = ymd_hms(date_last_modified)
   )
 
-assets_aris_df <- read_excel("../data/aris_asset_list_processed.xlsx") %>% 
-    process_aris_data
+assets_aris_df <- read_excel("../data_processed/aris_asset_list_complete.xlsx") 
 
-date_of_extraction <- read.csv("../data/date_of_extraction.csv")
+date_of_extraction <- read.csv("../data_raw/date_of_extraction.csv")
 
 
 ```
 
 
 Data as of  **`r as.character(date_of_extraction[1,])`**
+
+Version 0.4.0
 
 ## General Information 
 
@@ -42,7 +45,7 @@ In the first chapter **LabCase asset anaylsis** we examine assets which are stor
 
 In the second chapter **ARIS asset analysis** we examine assets objects which are part of the latest Prime ARIS release database. Those assets are available to our user base via ARIS Connect/ARIS Client.
 
-In the third part ** Merged LabCase and ARIS asset analysis** we merge the LabCase data set and the ARIS data set in order to reveal which assets are not mentinoned/listed in the other system and vice versa.
+In the third part **Merged LabCase and ARIS asset analysis** we merge the LabCase and ARIS data sets in order to reveal which assets are not mentinoned/listed in the other system and vice versa.
 
 
 
@@ -378,29 +381,33 @@ The `Link 1` attribute is by far the most important information because parts of
 ```{r echo=FALSE, fig.height=6, fig.width=6}
 
 assets_aris_df %>% 
-  select(labcase_id) %>%
+  select(labcase_id, `Link 1`) %>%
   mutate(
-    labcase_id = ifelse(is.na(labcase_id), "LC link missing", "LC link present")
+    labcase_id = ifelse(is.na(labcase_id), "Link missing", "LC Prime link present"),
+    labcase_id = ifelse((labcase_id == "Link missing" & !is.na(`Link 1`)), 
+                        "Other link present", labcase_id)
   )  %>% 
   count(labcase_id) %>%
   {max_val <<- max(.$n)
+  sum_val <<- sum(.$n)
   .  
   } %>%
-ggplot(aes(labcase_id, n)) +
+ggplot(aes(reorder(labcase_id, n), n)) +
   geom_bar(stat = "identity", fill = "#0899CC") +
   geom_text(aes(label = n), vjust = -1) +
   xlab("Link status") +
   ylab("Number of assets") +
-  ggtitle("ARIS assets by Link 1 status") +
+  ggtitle(paste0("ARIS assets (", sum_val, " overall)\n",
+                 "by Link 1 status")) +
   ylim(0, max_val * 1.08) +
   theme_bw() 
 
 
 ```
 
-* Of **`r nrow(assets_aris_df)` assets in ARIS `r sum(!is.na(assets_aris_df$labcase_id))`** possess a `Link 1` attribute
+* Of **`r nrow(assets_aris_df)` assets in ARIS `r sum(!is.na(assets_aris_df$labcase_id))`** possess a LC Prime `Link 1` attribute
 
-* Examing the `Link 1` attribute further reveals that **only `r sum(!is.na(unique(assets_aris_df$labcase_id)))` are really unique**. This corresponds to the number of ARIS assets we **can expect to successfully merge the most** with the LabCase data by `Alfresco ID` later
+* Examing the LC Prime `Link 1` attribute further reveals that **only `r sum(!is.na(unique(assets_aris_df$labcase_id)))` are really unique**. This corresponds to the number of ARIS assets we **can expect to successfully merge the most** with the LabCase data by `Alfresco ID` later
 
 * The following ARIS assets share the same `Link 1` attribute and **should be further examined and merged in ARIS**:
 
@@ -441,7 +448,7 @@ assets_aris_df %<>% filter(!GUID %in% duplicated_assets_guid)
 
 ### Referenced LabCase project
 
-* In this section we will examine which LabCase projects are referenced by those ARIS assets that possess a `Link 1` attribute **(`r sum(!is.na(assets_aris_df$labcase_id))` of `r nrow(assets_aris_df)`)**
+* In this section we will examine which LabCase projects are referenced by those ARIS assets that possess a LC Prime `Link 1` attribute **(`r sum(!is.na(assets_aris_df$labcase_id))` of `r nrow(assets_aris_df)`)**
 
 ```{r echo=FALSE, fig.width=15}
 
@@ -449,6 +456,7 @@ assets_aris_df %>%
   filter(!is.na(labcase_id)) %>%
   count(labcase_project) %>%
   {max_val <<- max(.$n)
+  sum_val <<- sum(.$n)
   .  
   } %>%
   ggplot(aes(reorder(labcase_project, n), n)) +
@@ -457,7 +465,8 @@ assets_aris_df %>%
     xlab("Project name") +
     ylab("Number of projects") +
     ylim(0, max_val * 1.08) +
-    ggtitle("Assets by LabCase project they reside in") +
+    ggtitle(paste0("Assets by LabCase project they reside in",
+                   " (", sum_val, " overall)")) +
     coord_flip() +
     theme_bw()
 
@@ -468,14 +477,17 @@ assets_aris_df %>%
 
 ## Merged LabCase and ARIS asset analysis
 
+
 ```{r echo=FALSE}
 
-aris_lc_match_numb <- assets_aris_df %>% 
+aris_lc_match_numb <- assets_aris_df %>%
+  filter(labcase_project == "prime") %>%
   semi_join(assets_lc_df, by = c("labcase_id" = "id")) %>% 
   nrow
 
-lc_aris_match_numb <- assets_lc_df %>% 
-  semi_join(assets_aris_df, by = c("id" = "labcase_id")) %>% 
+lc_aris_match_numb <- assets_lc_df %>%
+  semi_join(filter(assets_aris_df, labcase_project == "prime"), 
+                   by = c("id" = "labcase_id")) %>% 
   nrow
 
 aris_main_prime_numb <- assets_aris_df %>% 
@@ -484,47 +496,26 @@ aris_main_prime_numb <- assets_aris_df %>%
 
 ```
 
+In the first step we wil try to **merge those ARIS assets** that **possess a LC Prime `Link 1` attribute** AND are listed as **being stored in the main Prime project with** the **LabCase asset data set**.
+
+The **Alfresco ID** will serve as the primary key to merge the data sets.
+
+Based on the graph in the last section we would **expect to be able to merge `r aris_main_prime_numb` ARIS assets** with their respective LabCase counterparts. The results are the following:
 
 * **Records of the ARIS dataset** that can be **combined by extracted Alfresco ID** with **the LabCase dataset**: **`r aris_lc_match_numb`**
 
 * **Records of the LabCase dataset** that can be combined by extracted Alfresco ID with **the ARIS dataset**: **`r lc_aris_match_numb`**
 
-* Fortunately, both numbers match exactly. However, the **number of matching records between ARIS and LabCase (`r aris_lc_match_numb`)** is **higher than** those **ARIS records
-  that are linked to the main Prime project in LabCase (`r aris_main_prime_numb`)**
+Fortunately, both numbers match exactly. However, the **number of matching records between ARIS and LabCase (`r aris_lc_match_numb`)** is **lower than** those **ARIS records that are linked to the main Prime project in LabCase (`r aris_main_prime_numb`)**.
   
-* This can only have one reason:
-  * **ARIS assets flagged as residing in a LC working project** were **already moved to the main LC Prime project**. But their `Link 1` attribute was **not updated** accordingly
+This can only have one reason:
 
-* We will investigate this further in the next section
+* Either the documented `Link 1` attribute points to a dead LabCase project. Or the LabCase asset still resides in a working project but the project identifier as part of the `Link 1` attribute was already set to "prime" in ARIS. 
 
-
-### Link 1 points to working project in LC but asset present in main Prime Labcase project
-
-* ARIS assets that posses a `Link 1` attribute that **points to a LC Prime working project** but for which the **physcial asset was already moved to the main LC Prime project**:
-
-```{r echo=FALSE}
-
-aris_non_prime_lc_match_numb <- assets_aris_df %>% 
-    semi_join(assets_lc_df, by = c("labcase_id" = "id")) %>%
-    filter(labcase_project != "prime") %>%
-    select(Name, `LabCase ID` = labcase_id, `LC project` = labcase_project, GUID)
-
-kable(
-  aris_non_prime_lc_match_numb
-)
-
-```
-
-* The `Link 1` attribute for the assets above **needs to be updated in ARIS** by setting the project identifier to `prime` in the link
-
-* However the **asset list above is bigger (`r nrow(aris_non_prime_lc_match_numb)` records)** than the **original observed difference of `r aris_lc_match_numb`** - **`r aris_main_prime_numb` = `r aris_lc_match_numb - aris_main_prime_numb`**
-
-* This can only mean that from the **original `r aris_main_prime_numb` ARIS assets** that possess a `Link 1 ` attribute that points to the main LC Prime project, **`r nrow(aris_non_prime_lc_match_numb) - (aris_lc_match_numb - aris_main_prime_numb)` have dead LabCase links**
-
-* We will check this assumption in the next section
+In the next section we will investigate the affected `r aris_main_prime_numb - aris_lc_match_numb` ARIS assets further
 
 
-### Link 1 points to main Prime project in LC but asset removed in LabCase
+### ARIS assets with prime project identifier but missing released LabCase asset
 
 ```{r echo=FALSE}
 
@@ -532,20 +523,112 @@ aris_link1_not_lc <- assets_aris_df %>% filter(labcase_project == "prime") %>%
     anti_join(assets_lc_df, by = c("labcase_id" = "id")) %>%
     select(Name, `Original LabCase ID`= labcase_id, GUID)
 
+
+
 ```
 
-
-* ARIS assets that possess a `Link 1` attribute that **points to the main Prime project** but for which the **physical asset under the original ID does not exist** anymore **(`r nrow(aris_link1_not_lc)` total)**:
+In this case we're **dealing with an affected subset of `r nrow(aris_link1_not_lc)` assets**:
 
 ```{r echo=FALSE}
 
 kable(
-  assets_aris_df %>% filter(labcase_project == "prime") %>%
-    anti_join(assets_lc_df, by = c("labcase_id" = "id")) %>%
-    select(Name, `Original LabCase ID`= labcase_id, GUID)
+  aris_link1_not_lc
 )
 
 ```
+
+
+
+
+### ARIS assets with Link 1 working project identifier but with released LabCase asset
+
+
+
+```{r echo=FALSE}
+
+aris_not_prime <- assets_aris_df %>% filter(labcase_project != "prime",
+                                                   !is.na(labcase_id)) %>%
+  nrow
+
+aris_not_prime_but_lc <- assets_aris_df %>% filter(labcase_project != "prime",
+                                                   !is.na(labcase_id)) %>%
+    semi_join(assets_lc_df, by = c("labcase_id" = "id")) %>%
+    select(Name, `Original LabCase ID`= labcase_id, GUID)
+
+
+```
+
+Of course, we can also **check** if some of the **ARIS assets possessing a `Link 1` attribute but flagged as residing in one of the working projects (`r aris_not_prime`)** were **already moved** to the main Prime LabCase project.
+
+If so, the respective `Link 1` attribute in ARIS needs to be updated by setting the project identifier  to "prime".
+
+
+We will try to merge this subset of ARIS assets with the LabCase asset list. In this case we're **dealing with an affected subset of `r nrow(aris_not_prime_but_lc)`**:
+
+```{r echo=FALSE}
+
+kable(aris_not_prime_but_lc)
+
+```
+
+
+
+
+
+
+
+### Results
+
+```{r echo=FALSE}
+
+
+lc_only_assets <- anti_join(assets_lc_df, assets_aris_df, by = c("id" = "labcase_id"))
+
+aris_only_assets <- anti_join(assets_aris_df, assets_lc_df, by = c("labcase_id" = "id"))
+
+merged_assets <- inner_join(assets_lc_df, assets_aris_df, by = c("id" = "labcase_id"))
+
+```
+
+
+* In total, `r nrow(merged_assets)` LabCase and ARIS assets could be merged
+
+* For `r nrow(lc_only_assets)` LabCase assets no ARIS counterpart could be found
+
+* For `r nrow(aris_only_assets)` ARIS assets no LabCase counterpart could be found
+
+
+
+## Accompanying Files
+
+```{r echo=FALSE}
+
+xlsx.writeMultipleData("../data_processed/report_results.xlsx",
+                       c("LC assests complete", "ARIS assets complete",
+                         "Merged assets", "LabCase only assets", "ARIS only assets"),
+                       assets_lc_df,
+                       assets_aris_df,
+                       merged_assets,
+                       lc_only_assets,
+                       aris_only_assets)
+                       
+```
+
+A important part of the report is the data it is based on and the data sets that are created during the report generation process itself. 
+
+All data is captured in a single Excel Workbook called **report_results.xlsx** that consists of 5 different sheets:
+
+* **LC assests complete**: Complete list of extracted and processed LabCase asset data before merging
+
+* **ARIS assets complete**: Complete list of extracted and processed ARIS asset data before merging
+
+* **Merged assets**: ARIS and LabCase assets that could be merged
+
+* **LabCase only assets**: LabCase assets with no ARIS representation 
+
+* **ARIS only assets**: ARIS assets with no LabCase representation
+
+
 
 
 
