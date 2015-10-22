@@ -2,15 +2,16 @@
 
 library(httr)
 library(plyr)
+library(magrittr)
 library(dplyr)
 library(xml2)
 library(lubridate)
-library(xlsx)
 library(yaml)
 library(stringr)
 library(readr)
 library(readxl)
-library(magrittr)
+library(xlsx)
+
 
 library(knitr)
 library(knitrBootstrap)
@@ -25,14 +26,14 @@ base_url <- config$base_url
 
 assets_lc_df <- try(download_lc_data(config$folder_names, config$redmine_key,
                            config$alfresco_key), silent = TRUE)
-assets_aris_df <- try(read_excel("./data/aris_output_raw.xls"))
+assets_aris_df <- try(read_excel("./data_raw/aris_output_raw.xls"))
 
 
 if (class(assets_lc_df) != "try-error" & class(assets_aris_df) != "try-error") {
   
   # Save raw LC data and download timestamp
-  write_csv(assets_lc_df, "./data/lc_asset_list_raw.csv")
-  write.csv(now(), "./data/date_of_extraction.csv", row.names = FALSE)
+  write_csv(assets_lc_df, "./data_raw/labcase_asset_list_raw.csv")
+  write.csv(now(), "./data_raw/date_of_extraction.csv", row.names = FALSE)
   
   # Process data
   assets_lc_df <- process_lc_data(assets_lc_df)
@@ -40,14 +41,13 @@ if (class(assets_lc_df) != "try-error" & class(assets_aris_df) != "try-error") {
   
   # Save processed data
   attributes(assets_lc_df)$class <- c("data.frame")
-  write_csv(assets_lc_df, "./data/lc_asset_list_processed.csv")
-  write.xlsx(assets_lc_df, "./data/lc_asset_list_processed.xlsx", row.names = FALSE)
+  write.xlsx(assets_lc_df, "./data_processed/labcase_asset_list_complete.xlsx",
+             row.names = FALSE)
   
   attributes(assets_aris_df)$class <- c("data.frame")
-  write_csv(assets_aris_df, "./data/aris_asset_list_processed.csv")
-  write.xlsx(assets_aris_df, "./data/aris_asset_list_processed.xlsx", row.names = FALSE)
+  write.xlsx(assets_aris_df, "./data_processed/aris_asset_list_complete.xlsx",
+             row.names = FALSE)
  
-  
 }
 
 # Create report ----------------------------------------------------------------

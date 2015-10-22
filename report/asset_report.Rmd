@@ -582,20 +582,39 @@ kable(aris_not_prime_but_lc)
 ```{r echo=FALSE}
 
 
-lc_only_assets <- anti_join(assets_lc_df, assets_aris_df, by = c("id" = "labcase_id"))
+lc_only_assets <- anti_join(assets_lc_df, assets_aris_df, by = c("id" = "labcase_id")) 
 
-aris_only_assets <- anti_join(assets_aris_df, assets_lc_df, by = c("labcase_id" = "id"))
+aris_only_assets <- anti_join(assets_aris_df, assets_lc_df, 
+                              by = c("labcase_id" = "id")) %>%
+  select(Name, GUID, `Title 1`, `Description/Definition`, `Link 1`, 
+         labcase_project, `Prime_Asset_Type`, `Prime_Release`,
+         `Prime_Asset_Status`)
 
-merged_assets <- inner_join(assets_lc_df, assets_aris_df, by = c("id" = "labcase_id"))
+merged_assets <- inner_join(assets_lc_df, assets_aris_df, by = c("id" = "labcase_id")) %>%
+  select(
+    lc_name = name,
+    aris_name = Name, 
+    lc_title = title,
+    aris_title = `Title 1`,
+    aris_asset_type = `Prime_Asset_Type`,
+    lc_methodology = method_acronym,
+    lc_description = description, 
+    aris_description = `Description/Definition`,
+    lc_id = id,
+    aris_guid = GUID,
+    aris_asset_status = `Prime_Asset_Status`,
+    aris_prime_release = `Prime_Release`,
+    download_url
+  )
 
 ```
 
 
-* In total, `r nrow(merged_assets)` LabCase and ARIS assets could be merged
+* In total, **`r nrow(merged_assets)` LabCase and ARIS assets** could be **merged**
 
-* For `r nrow(lc_only_assets)` LabCase assets no ARIS counterpart could be found
+* For **`r nrow(lc_only_assets)` / `r nrow(assets_lc_df)` LabCase assets no ARIS counterpart** could be found (`r round(nrow(lc_only_assets) / nrow(assets_lc_df), 4) * 100` %)
 
-* For `r nrow(aris_only_assets)` ARIS assets no LabCase counterpart could be found
+* For **`r nrow(aris_only_assets)` / `r nrow(assets_aris_df)` ARIS assets no LabCase counterpart** could be found (`r round(nrow(aris_only_assets) / nrow(assets_aris_df), 4) * 100` %)
 
 
 
@@ -604,29 +623,29 @@ merged_assets <- inner_join(assets_lc_df, assets_aris_df, by = c("id" = "labcase
 ```{r echo=FALSE}
 
 xlsx.writeMultipleData("../data_processed/report_results.xlsx",
-                       c("LC assests complete", "ARIS assets complete",
-                         "Merged assets", "LabCase only assets", "ARIS only assets"),
-                       assets_lc_df,
-                       assets_aris_df,
+                       c("Merged assets", "LabCase only assets", "ARIS only assets",
+                         "LC assests complete", "ARIS assets complete"),
                        merged_assets,
                        lc_only_assets,
-                       aris_only_assets)
+                       aris_only_assets,
+                       assets_lc_df,
+                       assets_aris_df)
                        
 ```
 
 A important part of the report is the data it is based on and the data sets that are created during the report generation process itself. 
 
-All data is captured in a single Excel Workbook called **report_results.xlsx** that consists of 5 different sheets:
-
-* **LC assests complete**: Complete list of extracted and processed LabCase asset data before merging
-
-* **ARIS assets complete**: Complete list of extracted and processed ARIS asset data before merging
+All data is captured in a single Excel Workbook called **report_results.xlsx** that **consists of 5 different sheets**:
 
 * **Merged assets**: ARIS and LabCase assets that could be merged
 
 * **LabCase only assets**: LabCase assets with no ARIS representation 
 
 * **ARIS only assets**: ARIS assets with no LabCase representation
+
+* **LC assests complete**: Complete list of extracted and processed LabCase asset data before merging
+
+* **ARIS assets complete**: Complete list of extracted and processed ARIS asset data before merging
 
 
 
